@@ -7,7 +7,7 @@ import (
 
 func TestNextToken(t *testing.T) {
 	//测试字符串，``表示字符串字面量，不转义
-	input := `let five=5;
+	input := `let five=5
 let ten = 10;
 
 let add = fn(x, y) {
