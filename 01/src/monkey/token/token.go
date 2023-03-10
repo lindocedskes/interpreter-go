@@ -17,6 +17,17 @@ const (
 	//运算符
 	ASSIGN = "="
 	PLUS   = "+"
+
+	MINUS    = "-"
+	BANG     = "!"
+	ASTERISK = "*"
+	SLASH    = "/"
+
+	LT = "<"
+	GT = ">"
+	//双字
+	EQ     = "=="
+	NOT_EQ = "!="
 	//分隔符
 	COMMA     = ","
 	SEMICOLON = ";"
@@ -27,11 +38,22 @@ const (
 	//关键字
 	FUNCTION = "FUNCTION"
 	LET      = "LET"
+
+	TRUE   = "TRUE"
+	FALSE  = "FALSE"
+	IF     = "IF"
+	ELSE   = "ELSE"
+	RETURN = "RETURN"
 )
 
 var keywords = map[string]TokenType{ //关键字
-	"fn":  FUNCTION,
-	"let": LET,
+	"fn":     FUNCTION,
+	"let":    LET,
+	"true":   TRUE,
+	"false":  FALSE,
+	"if":     IF,
+	"else":   ELSE,
+	"return": RETURN,
 }
 
 func LookUpIdent(ident string) TokenType { //区分关键字和用户定义标识符

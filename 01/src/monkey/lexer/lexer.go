@@ -30,7 +30,37 @@ func (l *Lexer) NextToken() token.Token { //转换当前*Lexer的正在查看的
 	l.skipWhitespace() //跳过空格等无意义分隔符
 	switch l.ch {      //匹配，得到语法单元<类型，值>
 	case '=':
-		tok = newToken(token.ASSIGN, l.ch)
+		if l.peekChar() == '=' { // '=='，peekChar()仅查看下一个字符
+			ch := l.ch
+			l.readChar() //读取下一个字符并移动
+			literal := string(ch) + string(l.ch)
+			tok = token.Token{Type: token.EQ, Literal: literal}
+		} else {
+			tok = newToken(token.ASSIGN, l.ch)
+		}
+
+	case '+':
+		tok = newToken(token.PLUS, l.ch)
+	case '-':
+		tok = newToken(token.MINUS, l.ch)
+	case '!':
+		if l.peekChar() == '=' { // '!='，peekChar()仅查看下一个字符
+			ch := l.ch
+			l.readChar() //读取下一个字符并移动
+			literal := string(ch) + string(l.ch)
+			tok = token.Token{Type: token.NOT_EQ, Literal: literal}
+		} else {
+			tok = newToken(token.BANG, l.ch)
+		}
+	case '/':
+		tok = newToken(token.SLASH, l.ch)
+	case '*':
+		tok = newToken(token.ASTERISK, l.ch)
+	case '<':
+		tok = newToken(token.LT, l.ch)
+	case '>':
+		tok = newToken(token.GT, l.ch)
+
 	case ';':
 		tok = newToken(token.SEMICOLON, l.ch)
 	case ('('):
@@ -39,8 +69,6 @@ func (l *Lexer) NextToken() token.Token { //转换当前*Lexer的正在查看的
 		tok = newToken(token.RPAREN, l.ch)
 	case ',':
 		tok = newToken(token.COMMA, l.ch)
-	case '+':
-		tok = newToken(token.PLUS, l.ch)
 	case '{':
 		tok = newToken(token.LBRACE, l.ch)
 	case '}':
@@ -98,4 +126,12 @@ func (l *Lexer) readNumber() string { //读出对应的字母下划线串
 		l.readChar()
 	}
 	return l.input[position:l.position] //读出对应的字母下划线串
+}
+
+func (l *Lexer) peekChar() byte { //超前搜索
+	if l.readPosition >= len(l.input) {
+		return 0
+	} else {
+		return l.input[l.readPosition] //查看下一个单词
+	}
 }
