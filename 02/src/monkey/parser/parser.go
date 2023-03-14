@@ -49,6 +49,8 @@ func (p *Parser) parseStatement() ast.Statement {
 	//按词法单元类型进行不同的处理
 	case token.LET:
 		return p.parseLetStatement() //调用对LET语句的语法分析
+	case token.RETURN:
+		return p.parseReturnStatement() //调用对RETURN语句的语法分析
 	default:
 		return nil
 	}
@@ -65,6 +67,18 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 	if !p.expectPeek(token.ASSIGN) { //下一个词法单元类型是否是'='
 		return nil
 	}
+
+	//TODO  先跳过表达式的处理,直到遇到分号结束';'
+	if !p.curTokenIs(token.SEMICOLON) {
+		p.nextToken()
+	}
+	return stmt
+}
+
+// Return语句的语法分析
+func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
+	stmt := &ast.ReturnStatement{Token: p.curToken} //return语句根节点
+	p.nextToken()
 
 	//TODO  先跳过表达式的处理,直到遇到分号结束';'
 	if !p.curTokenIs(token.SEMICOLON) {

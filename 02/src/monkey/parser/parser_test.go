@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+/*LET语句测试*/
 func TestLetStatements(t *testing.T) {
 	input := `
 let x = 5;
@@ -74,4 +75,36 @@ func checkParseErrors(t *testing.T, p *Parser) {
 		t.Errorf("parser error:%q", msg)
 	}
 	t.FailNow() //终止测试
+}
+
+/*return语句测试*/
+func TestReturnStatements(t *testing.T) {
+	input := `
+return 5;
+return 10;
+return 838383;
+`
+	l := lexer.New(input)
+	p := New(l) //该类型新分配的零值的指针
+	program := p.ParseProgram()
+	checkParseErrors(t, p)
+	if program == nil {
+		t.Fatalf("ParseProgrm return nil")
+	}
+	if len(program.Statements) != 3 {
+		t.Fatalf("program.Statements does not contain 3 statements. got=%d",
+			len(program.Statements))
+	}
+
+	for _, stmt := range program.Statements {
+		returnStmt, ok := stmt.(*ast.ReturnStatement) //断言判断是否是ast.ReturnStatement语法树
+		if !ok {
+			t.Fatalf("stmt not *ast.ReturnStatement. got=%T", stmt)
+			continue //下一句
+		}
+		if returnStmt.TokenLiteral() != "return" { //类型正确，值错误
+			t.Fatalf("returnStmt.TokenLiteral not 'return', got %q",
+				returnStmt.TokenLiteral())
+		}
+	}
 }
