@@ -1,12 +1,14 @@
 package ast
 
 import (
+	"bytes"
 	"monkey/token"
 )
 
 // The base Node interfac
 type Node interface { //返回关联词法单元的字面量
 	TokenLiteral() string
+	String() string //调试时打印节点
 }
 
 type Statement interface { //ast中一些实现语句接口
@@ -16,7 +18,7 @@ type Statement interface { //ast中一些实现语句接口
 
 type Expression interface { //ast中一些实现表达式接口
 	Node
-	expressionNode() string
+	expressionNode()
 }
 
 type Program struct {
@@ -30,6 +32,13 @@ func (p *Program) TokenLiteral() string { //AST根节点
 		return ""
 	}
 }
+func (p *Program) String() string { //AST根节点
+	var out bytes.Buffer //创建一个缓冲区
+	for _, s := range p.Statements {
+		out.WriteString(s.String()) //s遍历每个Statements，调用每条语句的String方法的返回值写入缓冲区
+	}
+	return out.String() //缓冲区以字符串返回
+}
 
 /*LET 语句 AST结构：LET <标识符> = <表达式>*/
 type LetStatement struct {
@@ -41,6 +50,17 @@ type LetStatement struct {
 // LetStatement句子节点需要实现的接口
 func (ls *LetStatement) statementNode()       {}
 func (ls *LetStatement) TokenLiteral() string { return ls.Token.Literal }
+func (ls *LetStatement) String() string {
+	var out bytes.Buffer                     //创建一个缓冲区
+	out.WriteString(ls.TokenLiteral() + " ") //let
+	out.WriteString(ls.Name.String())        //x
+	out.WriteString(" = ")                   //=
+	if ls.Value != nil {
+		out.WriteString(ls.Value.String()) //5
+	}
+	return out.String()
+
+}
 
 type Identifier struct {
 	Token token.Token //token.IDENT 词法单元
@@ -50,6 +70,9 @@ type Identifier struct {
 // Identifier 标识符实现的也是表达式节点的接口
 func (i *Identifier) expressionNode()      {}
 func (i *Identifier) TokenLiteral() string { return i.Token.Literal }
+func (i *Identifier) String() string {
+	return i.Value
+}
 
 /*return 语句 AST结构： return <表达式>*/
 type ReturnStatement struct {
@@ -60,3 +83,28 @@ type ReturnStatement struct {
 // 实现Statement全部方法，即实现该接口
 func (rs *ReturnStatement) statementNode()       {}
 func (rs *ReturnStatement) TokenLiteral() string { return rs.Token.Literal }
+func (rs *ReturnStatement) String() string {
+	var out bytes.Buffer                     //创建一个缓冲区
+	out.WriteString(rs.TokenLiteral() + " ") //return
+	if rs.ReturnValue != nil {
+		out.WriteString(rs.ReturnValue.String()) //5
+	}
+	return out.String()
+}
+
+/*解析表达式*/
+
+// 表达式语句-结构
+type ExpressionStatement struct {
+	Token      token.Token //该表达式中第一个词法单元
+	Expression Expression
+}
+
+func (es *ExpressionStatement) statementNode()       {}
+func (es *ExpressionStatement) TokenLiteral() string { return es.Token.Literal }
+func (es *ExpressionStatement) String() string {
+	if es.Expression != nil {
+		return es.Expression.String()
+	}
+	return ""
+}
