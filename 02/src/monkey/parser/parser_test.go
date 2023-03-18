@@ -16,7 +16,7 @@ let foobar = 838383;
 	l := lexer.New(input)
 	p := New(l) //该类型新分配的零值的指针
 	program := p.ParseProgram()
-	checkParseErrors(t, p)
+	checkParserErrors(t, p)
 	if program == nil {
 		t.Fatalf("ParseProgrm return nil")
 	}
@@ -65,7 +65,7 @@ func testLetStatement(t *testing.T, s ast.Statement, name string) bool {
 }
 
 // 检测Parse解析errors中是否有错误，有输出并终止测试
-func checkParseErrors(t *testing.T, p *Parser) {
+func checkParserErrors(t *testing.T, p *Parser) {
 	errors := p.Errors()
 	if len(errors) == 0 {
 		return
@@ -87,7 +87,7 @@ return 838383;
 	l := lexer.New(input)
 	p := New(l) //该类型新分配的零值的指针
 	program := p.ParseProgram()
-	checkParseErrors(t, p)
+	checkParserErrors(t, p)
 	if program == nil {
 		t.Fatalf("ParseProgrm return nil")
 	}
@@ -106,5 +106,73 @@ return 838383;
 			t.Fatalf("returnStmt.TokenLiteral not 'return', got %q",
 				returnStmt.TokenLiteral())
 		}
+	}
+}
+
+/* 普拉特语法分析器-标识符*/
+func TestIdentifierExpression(t *testing.T) {
+	input := "foobar;"
+
+	l := lexer.New(input)
+	p := New(l) //该类型新分配的零值的指针
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program.Statements does not contain 1 statements. got=%d",
+			len(program.Statements))
+	}
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement) //断言判断是否是ast.ExpressionStatement语法树
+	//stmt, ok := stmts.(*ast.ExpressionStatement)
+	println(stmt)
+	if !ok {
+		t.Fatalf("stmt not *ast.ExpressionStatement. got=%T", program.Statements[0])
+	}
+
+	ident, ok := stmt.Expression.(*ast.Identifier) //断言判断是否是ast.ExpressionStatement语法树
+	if !ok {
+		t.Fatalf("stmt not *ast.Identifier. got=%T", stmt.Expression)
+	}
+	if ident.Value != "foobar" { //类型正确，值错误
+		t.Fatalf("ident.Value not 'foobar', got %s",
+			ident.Value)
+	}
+	if ident.TokenLiteral() != "foobar" { //类型正确，值错误
+		t.Fatalf("ident.Value not 'foobar', got %s",
+			ident.TokenLiteral())
+	}
+
+}
+
+/* 普拉特语法分析器-整数字面量*/
+func TestIntegerLiteralExpression(t *testing.T) {
+	input := "5;"
+
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program has not enough statements. got=%d",
+			len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not ast.ExpressionStatement. got=%T",
+			program.Statements[0])
+	}
+
+	literal, ok := stmt.Expression.(*ast.IntegerLiteral)
+	if !ok {
+		t.Fatalf("exp not *ast.IntegerLiteral. got=%T", stmt.Expression)
+	}
+	if literal.Value != 5 {
+		t.Errorf("literal.Value not %d. got=%d", 5, literal.Value)
+	}
+	if literal.TokenLiteral() != "5" {
+		t.Errorf("literal.TokenLiteral not %s. got=%s", "5",
+			literal.TokenLiteral())
 	}
 }

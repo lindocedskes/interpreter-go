@@ -17,8 +17,10 @@
 
   + 2.6.2 普拉特解析法
 
-  + 2.6.4 准备AST -每类（let,return,exepresion）statement都支持string()，返回对应AST信息供查看
-
+  + 2.6.4 准备AST ：每类（let,return,exepresion）statement都支持string()，返回对应AST信息供查看
+  
+  + 2.6.6 标识符
+  + 2.6.6 整数字面量
 
 tag版本解释
 + v2.1 解析return语句+解析表达式之准备AST

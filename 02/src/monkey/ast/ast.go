@@ -62,6 +62,7 @@ func (ls *LetStatement) String() string {
 
 }
 
+// 标识符
 type Identifier struct {
 	Token token.Token //token.IDENT 词法单元
 	Value string      //为了简单，有些标识符也有值
@@ -108,3 +109,12 @@ func (es *ExpressionStatement) String() string {
 	}
 	return ""
 }
+
+type IntegerLiteral struct {
+	Token token.Token
+	Value int64
+}
+
+func (il *IntegerLiteral) expressionNode()      {}
+func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
+func (il *IntegerLiteral) String() string       { return il.Token.Literal }
