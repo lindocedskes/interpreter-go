@@ -110,6 +110,7 @@ func (es *ExpressionStatement) String() string {
 	return ""
 }
 
+// 解析表达式-整型字面量
 type IntegerLiteral struct {
 	Token token.Token
 	Value int64
@@ -118,3 +119,23 @@ type IntegerLiteral struct {
 func (il *IntegerLiteral) expressionNode()      {}
 func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
 func (il *IntegerLiteral) String() string       { return il.Token.Literal }
+
+// 解析表达式-前缀表达式 !-
+type PrefixExpression struct {
+	Token    token.Token //该表达式中第一个词法单元 !-
+	Operator string
+	Right    Expression
+}
+
+func (pe *PrefixExpression) expressionNode()      {}
+func (pe *PrefixExpression) TokenLiteral() string { return pe.Token.Literal }
+func (pe *PrefixExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("(")
+	out.WriteString(pe.Operator)
+	out.WriteString(pe.Right.String())
+	out.WriteString(")")
+
+	return out.String()
+}

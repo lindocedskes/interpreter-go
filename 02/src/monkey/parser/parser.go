@@ -38,8 +38,10 @@ func New(l *lexer.Lexer) *Parser {
 	p.nextToken() //0,1->1,2
 
 	p.prefixParseFns = make(map[token.TokenType]prefixParseFn) //初始化前缀映射
-	p.registerPrefix(token.IDENT, p.parseIdentifier)           //前缀添加{token类型:解析函数}映射
-	p.registerPrefix(token.INT, p.parseIntegerLiteral)         //注册parseIntegerLiteral方法
+	p.registerPrefix(token.IDENT, p.parseIdentifier)           //标识符添加{token类型:解析函数}映射
+	p.registerPrefix(token.INT, p.parseIntegerLiteral)         //整数字面量添加{token类型:解析函数}映射
+	p.registerPrefix(token.BANG, p.parsePrefixExpression)      //前缀运算符（!）{token类型:解析函数}映射
+	p.registerPrefix(token.MINUS, p.parsePrefixExpression)     //前缀运算符（-）{token类型:解析函数}映射
 	return p
 }
 
@@ -170,18 +172,25 @@ func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
 func (p *Parser) parseExpression(precedence int) ast.Expression { //传入运算符优先级int
 	prefix := p.prefixParseFns[p.curToken.Type]
 	if prefix == nil {
+		p.noPrefixParseFnError(p.curToken.Type) //前缀对应解析函数
 		return nil
 	}
 	leftExp := prefix()
 	return leftExp
 }
 
-// 前缀解析函数-返回Identifier节点包含token和value值
+// 前缀解析函数-没有加入error消息
+func (p *Parser) noPrefixParseFnError(t token.TokenType) {
+	msg := fmt.Sprintf("no prefix parse function for %s found", t)
+	p.errors = append(p.Errors(), msg)
+}
+
+// 表达式-标识符解析函数-返回Identifier节点包含token和value值
 func (p *Parser) parseIdentifier() ast.Expression {
 	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 }
 
-// 前缀解析函数-返回IntegerLiteral节点包含token和value值,value是int类型
+// 表达式-整数字面量解析函数-返回IntegerLiteral节点包含token和value值,value是int类型
 func (p *Parser) parseIntegerLiteral() ast.Expression {
 	lit := &ast.IntegerLiteral{Token: p.curToken}
 	//str转int64
@@ -193,4 +202,17 @@ func (p *Parser) parseIntegerLiteral() ast.Expression {
 	}
 	lit.Value = value
 	return lit
+}
+
+// 表达式-前缀运算符解析函数
+func (p *Parser) parsePrefixExpression() ast.Expression {
+	expression := &ast.PrefixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+	}
+
+	p.nextToken() //导致解析完表达式后，指向表达式最后一个token
+
+	expression.Right = p.parseExpression(PREFIX) //递归解析前缀表达式，PREFIX这个问题留给下一节解决
+	return expression
 }
