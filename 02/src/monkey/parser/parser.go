@@ -14,10 +14,21 @@ const ( //设置运算符优先级
 	EQUALS      // ==
 	LESSGREATER //> or<
 	SUM         //+
-	PRODDUCT    //*
+	PRODUCT     //*
 	PREFIX      //-X or !X
 	CALL        //myFunction(X)
 )
+
+var precedences = map[token.TokenType]int{ //{类型：优先级}映射
+	token.EQ:       EQUALS,      //=
+	token.NOT_EQ:   EQUALS,      //!=
+	token.LT:       LESSGREATER, //<
+	token.GT:       LESSGREATER, //>
+	token.PLUS:     SUM,         //+
+	token.MINUS:    SUM,         //-
+	token.SLASH:    PRODUCT,     // /
+	token.ASTERISK: PRODUCT,     //*
+}
 
 type Parser struct {
 	l         *lexer.Lexer //输入文本，调用l.nextToken读取词法单元
@@ -42,6 +53,17 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)         //整数字面量添加{token类型:解析函数}映射
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)      //前缀运算符（!）{token类型:解析函数}映射
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)     //前缀运算符（-）{token类型:解析函数}映射
+
+	p.infixParseFns = make(map[token.TokenType]infixParseFn) //初始化中缀映射
+	p.registerInfix(token.PLUS, p.parseInfixExpression)
+	p.registerInfix(token.MINUS, p.parseInfixExpression)
+	p.registerInfix(token.SLASH, p.parseInfixExpression)
+	p.registerInfix(token.ASTERISK, p.parseInfixExpression)
+	p.registerInfix(token.EQ, p.parseInfixExpression)
+	p.registerInfix(token.NOT_EQ, p.parseInfixExpression)
+	p.registerInfix(token.LT, p.parseInfixExpression)
+	p.registerInfix(token.GT, p.parseInfixExpression)
+
 	return p
 }
 
@@ -172,10 +194,21 @@ func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
 func (p *Parser) parseExpression(precedence int) ast.Expression { //传入运算符优先级int
 	prefix := p.prefixParseFns[p.curToken.Type]
 	if prefix == nil {
-		p.noPrefixParseFnError(p.curToken.Type) //前缀对应解析函数
+		p.noPrefixParseFnError(p.curToken.Type) //前缀解析函数-没有加入error消息
 		return nil
 	}
 	leftExp := prefix()
+	//??
+	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() {
+		infix := p.infixParseFns[p.peekToken.Type]
+		if infix == nil {
+			return leftExp
+		}
+
+		p.nextToken()
+
+		leftExp = infix(leftExp)
+	}
 	return leftExp
 }
 
@@ -214,5 +247,36 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 	p.nextToken() //导致解析完表达式后，指向表达式最后一个token
 
 	expression.Right = p.parseExpression(PREFIX) //递归解析前缀表达式，PREFIX这个问题留给下一节解决
+	return expression
+}
+
+// 查看下一个token优先级，返回int，未定义的默认最低
+func (p *Parser) peekPrecedence() int {
+	if p, ok := precedences[p.peekToken.Type]; ok {
+		return p
+	}
+	return LOWEST
+}
+
+// 查看当前token优先级，返回int，未定义的默认最低
+func (p *Parser) curPrecedence() int {
+	if p, ok := precedences[p.curToken.Type]; ok {
+		return p
+	}
+	return LOWEST
+}
+
+// 表达式-中缀运算符解析函数, 需传入左表达式
+func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+	expression := &ast.InfixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+		Left:     left, //左操作数通过传入参数，放入节点
+	}
+
+	precedence := p.curPrecedence() //查看当前优先级
+	p.nextToken()
+	expression.Right = p.parseExpression(precedence) //右操作数放入节点，并递归调用
+
 	return expression
 }
