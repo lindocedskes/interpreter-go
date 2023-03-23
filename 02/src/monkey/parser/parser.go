@@ -133,8 +133,10 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 
 // Expression语句的语法分析
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
+	defer untrace(trace("parseExpressionStatement")) //添加跟踪语句，执行结束后输出
+
 	stmt := &ast.ExpressionStatement{Token: p.curToken} //return语句根节点
-	stmt.Expression = p.parseExpression(LOWEST)
+	stmt.Expression = p.parseExpression(LOWEST)         //传入前一个运算符优先级，初始为最低 例：1+2  +与LOWEST比较
 
 	//TODO  分号可选';'
 	if !p.curTokenIs(token.SEMICOLON) {
@@ -191,23 +193,25 @@ func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
 }
 
 // 检查前缀位置是否有token类型关联的解析函数
-func (p *Parser) parseExpression(precedence int) ast.Expression { //传入运算符优先级int
+func (p *Parser) parseExpression(precedence int) ast.Expression { //传入前一个运算符优先级，例：1+2+3 的第一个+
+	defer untrace(trace("parseExpression")) //添加跟踪语句，执行结束后输出
+
 	prefix := p.prefixParseFns[p.curToken.Type]
 	if prefix == nil {
 		p.noPrefixParseFnError(p.curToken.Type) //前缀解析函数-没有加入error消息
 		return nil
 	}
-	leftExp := prefix()
-	//??
-	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() {
-		infix := p.infixParseFns[p.peekToken.Type]
+	leftExp := prefix() //存储前缀解析函数的返回值指针，数字返回*ast.IntegerLiteral，标识符返回*ast.Identifier，前缀操作符返回*ast.PrefixExpression
+	//不为； 且优先级高，例cur在1+2+3中指向2，前一个运算符优先级>=下一个运算符优先级，则不执行循环;也有前一个为数字 < 下一个运算符，执行
+	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() { //precedence由于递归是当前层的前一个优先级***容易❌，cur多次递归后移动可能很后面
+		infix := p.infixParseFns[p.peekToken.Type] //查找下一个token类型对应中缀解析函数
 		if infix == nil {
 			return leftExp
 		}
 
-		p.nextToken()
+		p.nextToken() //移动1个，cur->peek 例 1+2+3，cur现在指向第1个+运算符
 
-		leftExp = infix(leftExp)
+		leftExp = infix(leftExp) //执行中缀解析函数，leftExp为左节点，⚠️例：1+2+3 递归第二层返回后 指向是*ast.InfixExpression:(1+2)
 	}
 	return leftExp
 }
@@ -225,6 +229,8 @@ func (p *Parser) parseIdentifier() ast.Expression {
 
 // 表达式-整数字面量解析函数-返回IntegerLiteral节点包含token和value值,value是int类型
 func (p *Parser) parseIntegerLiteral() ast.Expression {
+	defer untrace(trace("parseIntegerLiteral")) //添加跟踪语句，执行结束后输出
+
 	lit := &ast.IntegerLiteral{Token: p.curToken}
 	//str转int64
 	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
@@ -239,6 +245,8 @@ func (p *Parser) parseIntegerLiteral() ast.Expression {
 
 // 表达式-前缀运算符解析函数
 func (p *Parser) parsePrefixExpression() ast.Expression {
+	defer untrace(trace("parsePrefixExpression")) //添加跟踪语句，执行结束后输出
+
 	expression := &ast.PrefixExpression{
 		Token:    p.curToken,
 		Operator: p.curToken.Literal,
@@ -267,16 +275,18 @@ func (p *Parser) curPrecedence() int {
 }
 
 // 表达式-中缀运算符解析函数, 需传入左表达式
-func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression { //例1+2，传入1为*ast.IntegerLiteral， 节点
+	defer untrace(trace("parseInfixExpression")) //添加跟踪语句，执行结束后输出
+
 	expression := &ast.InfixExpression{
 		Token:    p.curToken,
 		Operator: p.curToken.Literal,
 		Left:     left, //左操作数通过传入参数，放入节点
 	}
 
-	precedence := p.curPrecedence() //查看当前优先级
-	p.nextToken()
-	expression.Right = p.parseExpression(precedence) //右操作数放入节点，并递归调用
+	precedence := p.curPrecedence()                  //cur当前指向运算符，保存前一个运算符优先级
+	p.nextToken()                                    //cur指向右边操作数
+	expression.Right = p.parseExpression(precedence) //前面一个运算符作为参数传入，并递归继续解析右端表达式
 
 	return expression
 }

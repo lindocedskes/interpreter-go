@@ -295,7 +295,7 @@ func TestParsingInfixExpressions(t *testing.T) {
 	}
 }
 
-/* 测试操作数优先级解析*/
+/* 测试前缀+中缀 按操作数优先级解析*/
 func TestOperatorPrecedenceParsing(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -357,8 +357,8 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		program := p.ParseProgram()
 		checkParserErrors(t, p)
 
-		actual := program.String() //返回语句优先级解析的字符串
-		println(actual)            //输出查看
+		actual := program.String()     //返回语句优先级解析的字符串
+		println("语法分析器解析结果：" + actual) //输出查看
 		if actual != tt.expected {
 			t.Errorf("expected=%q, got=%q", tt.expected, actual)
 		}
