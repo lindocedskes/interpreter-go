@@ -3,6 +3,7 @@ package ast
 import (
 	"bytes"
 	"monkey/token"
+	"strings"
 )
 
 // The base Node interfac
@@ -157,6 +158,109 @@ func (ie *InfixExpression) String() string {
 	out.WriteString(ie.Left.String())
 	out.WriteString(" " + ie.Operator + " ")
 	out.WriteString(ie.Right.String())
+	out.WriteString(")")
+
+	return out.String()
+}
+
+// 布尔字面量
+type Boolean struct {
+	Token token.Token
+	Value bool
+}
+
+func (b *Boolean) expressionNode()      {}
+func (b *Boolean) TokenLiteral() string { return b.Token.Literal }
+func (b *Boolean) String() string {
+	return b.Token.Literal
+}
+
+// 表达式内部的语句集合 {，例：if-else中 需要局部的语句集合
+type BlockStatement struct {
+	Token      token.Token //{ 大括号
+	Statements []Statement
+}
+
+func (bs *BlockStatement) expressionNode()      {}
+func (bs *BlockStatement) TokenLiteral() string { return bs.Token.Literal }
+func (bs *BlockStatement) String() string {
+	var out bytes.Buffer
+
+	for _, s := range bs.Statements {
+		out.WriteString(s.String())
+	}
+	return out.String()
+}
+
+// if
+type IfExpression struct {
+	Token       token.Token //'if'
+	Condition   Expression
+	Consequence *BlockStatement //BlockStatement，语句集合
+	Alternative *BlockStatement
+}
+
+func (ie *IfExpression) expressionNode()      {}
+func (ie *IfExpression) TokenLiteral() string { return ie.Token.Literal }
+func (ie *IfExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("if")
+	out.WriteString(ie.Condition.String())
+	out.WriteString(" ")
+	out.WriteString(ie.Consequence.String())
+	if ie.Alternative != nil {
+		out.WriteString("else")
+		out.WriteString(ie.Alternative.String())
+	}
+
+	return out.String()
+}
+
+// fn 函数字面量 fn <parameters> <block statement>
+type FunctionLiteral struct {
+	Token      token.Token     //'fn'
+	Parameters []*Identifier   //标识符作为参数
+	Body       *BlockStatement //函数体
+}
+
+func (fl *FunctionLiteral) expressionNode()      {}
+func (fl *FunctionLiteral) TokenLiteral() string { return fl.Token.Literal }
+func (fl *FunctionLiteral) String() string {
+	var out bytes.Buffer
+
+	params := []string{} //保存所有参数
+	for _, p := range fl.Parameters {
+		params = append(params, p.String())
+	}
+	out.WriteString(fl.TokenLiteral())
+	out.WriteString("(")
+	out.WriteString(strings.Join(params, ", ")) //输出字符数组，第二个参数为间隔
+	out.WriteString("） ")
+	out.WriteString(fl.Body.String()) //输出函数体
+
+	return out.String()
+}
+
+// 调用函数 add() 表达式 <expression>(<comma separated expressions>)
+type CallExpression struct {
+	Token     token.Token  //'('词法单元
+	Function  Expression   //标识符或者函数字面量
+	Arguments []Expression //传入参数--表达式语句
+}
+
+func (ce *CallExpression) expressionNode()      {}
+func (ce *CallExpression) TokenLiteral() string { return ce.Token.Literal }
+func (ce *CallExpression) String() string {
+	var out bytes.Buffer
+
+	args := []string{}               //保存所有参数
+	for _, a := range ce.Arguments { //每一个参数都是表达式
+		args = append(args, a.String())
+	}
+	out.WriteString(ce.Function.String()) //调用函数名
+	out.WriteString("(")
+	out.WriteString(strings.Join(args, ", ")) //输出参数表达式数组，第二个参数为间隔
 	out.WriteString(")")
 
 	return out.String()

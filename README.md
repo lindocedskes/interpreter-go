@@ -25,6 +25,12 @@
   + 2.6.9 解析中缀运算符
 
 + 2.7 普拉特解析工作方式
++ 2.8 扩展语法分析器
+  + 2.8.1 布尔字面量：支持布尔类型解析，在前缀和中缀布尔添加测试
+  + 2.8.2 分组表达式：带括号的表达式处理
+  + 2.8.3 if表达式：if-else，else可选，包含{}解析函数
+  + 2.8.4 函数字面量：fn <parameters> <block statement>
+  + 2.8.5 调用表达式： <expression>(<comma separated expressions>) 例：add()
 
 tag版本解释
 

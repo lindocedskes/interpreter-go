@@ -28,6 +28,8 @@ var precedences = map[token.TokenType]int{ //{类型：优先级}映射
 	token.MINUS:    SUM,         //-
 	token.SLASH:    PRODUCT,     // /
 	token.ASTERISK: PRODUCT,     //*
+
+	token.LPAREN: CALL, //'(' add(),调用表达式。 ？？但遇到（ 都会调用callExpression函数
 }
 
 type Parser struct {
@@ -54,6 +56,15 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)      //前缀运算符（!）{token类型:解析函数}映射
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)     //前缀运算符（-）{token类型:解析函数}映射
 
+	p.registerPrefix(token.TRUE, p.parseBoolean)  //布尔运算符（ture）{token类型:解析函数}映射
+	p.registerPrefix(token.FALSE, p.parseBoolean) //布尔运算符（false）{token类型:解析函数}映射
+
+	p.registerPrefix(token.LPAREN, p.parseGroupedExpression) //分组表达式：（左括号
+
+	p.registerPrefix(token.IF, p.parseIfExpression) //if表达式： if-else +{ }
+
+	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral) //表达式fn
+
 	p.infixParseFns = make(map[token.TokenType]infixParseFn) //初始化中缀映射
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
 	p.registerInfix(token.MINUS, p.parseInfixExpression)
@@ -63,6 +74,8 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.NOT_EQ, p.parseInfixExpression)
 	p.registerInfix(token.LT, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)
+
+	p.registerInfix(token.LPAREN, p.parseCallExpression) //调用函数 add() (的中缀解析
 
 	return p
 }
@@ -80,6 +93,7 @@ func (p *Parser) ParseProgram() *ast.Program { //调用语法分析器入口
 		stmt := p.parseStatement() //语法分析一句，返回指向该句生成的AST的指针（子节点）
 		if stmt != nil {
 			program.Statements = append(program.Statements, stmt) //加入AST根节点的切片
+			//fmt.Println(stmt)                                     //输出查看解析的句子
 		}
 		p.nextToken()
 	}
@@ -111,9 +125,10 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 	if !p.expectPeek(token.ASSIGN) { //下一个词法单元类型是否是'='
 		return nil
 	}
+	p.nextToken()
 
 	//TODO  先跳过表达式的处理,直到遇到分号结束';'
-	if !p.curTokenIs(token.SEMICOLON) {
+	if p.peekTokenIs(token.SEMICOLON) {
 		p.nextToken()
 	}
 	return stmt
@@ -139,7 +154,7 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	stmt.Expression = p.parseExpression(LOWEST)         //传入前一个运算符优先级，初始为最低 例：1+2  +与LOWEST比较
 
 	//TODO  分号可选';'
-	if !p.curTokenIs(token.SEMICOLON) {
+	if p.peekTokenIs(token.SEMICOLON) {
 		p.nextToken()
 	}
 	return stmt
@@ -289,4 +304,146 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression { //�
 	expression.Right = p.parseExpression(precedence) //前面一个运算符作为参数传入，并递归继续解析右端表达式
 
 	return expression
+}
+
+// 表达式-布尔运算符解析函数
+func (p *Parser) parseBoolean() ast.Expression {
+	return &ast.Boolean{Token: p.curToken, Value: p.curTokenIs(token.TRUE)}
+}
+
+// 表达式 -分组表达式：（ 左括号
+func (p *Parser) parseGroupedExpression() ast.Expression {
+	p.nextToken()
+
+	exp := p.parseExpression(LOWEST) //提高括号内部优先级
+
+	if !p.expectPeek(token.RPAREN) { //遇到右括号结束
+		return nil
+	}
+	return exp
+}
+
+// 表达式 if (<condition>) <consequence> else <alternative>
+func (p *Parser) parseIfExpression() ast.Expression {
+	exp := &ast.IfExpression{Token: p.curToken} //产生节点，保存token-IF
+	if !p.expectPeek(token.LPAREN) {
+		return nil
+	}
+
+	p.nextToken()
+	exp.Condition = p.parseExpression(LOWEST) //普拉特-递归分析条件语句，提高括号内部优先级
+
+	if !p.expectPeek(token.RPAREN) { //expectPeek 预期正确会自动nextToken
+		return nil
+	} //	右括号
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	} //	左大括号
+
+	exp.Consequence = p.parseBlockStatement() //解析大括号内语句集合
+
+	if p.peekTokenIs(token.ELSE) { //如果下一个是else
+		//fmt.Println(p.peekToken)
+		p.nextToken() //跳过else
+
+		if !p.expectPeek(token.LBRACE) { //检查else下一个是{，并nextToken
+			return nil
+		}
+		exp.Alternative = p.parseBlockStatement() //解析else的大括号内语句集合
+	}
+	return exp
+}
+
+// 表达式 -大括号语句集合 if(Condition) {Consequence}
+func (p *Parser) parseBlockStatement() *ast.BlockStatement {
+	block := &ast.BlockStatement{Token: p.curToken}
+	block.Statements = []ast.Statement{} //存放语句集
+
+	p.nextToken()
+	//遇到右括号或者EOF结束
+	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
+		stmt := p.parseStatement() //解析语句
+		//fmt.Println(p.curToken)
+		if stmt != nil {
+			block.Statements = append(block.Statements, stmt)
+		}
+		p.nextToken()
+	}
+	return block
+}
+
+// 表达式 fn <parameters> <block statement>
+func (p *Parser) parseFunctionLiteral() ast.Expression {
+	lit := &ast.FunctionLiteral{Token: p.curToken} //产生节点，保存fn token
+	if !p.expectPeek(token.LPAREN) {
+		return nil
+	}
+
+	lit.Parameters = p.parseFunctionParameters() //解析标识符参数
+
+	if !p.expectPeek(token.LBRACE) { //expectPeek 预期正确会自动nextToken
+		return nil
+	} //	左大括号{
+
+	lit.Body = p.parseBlockStatement() //解析大括号内语句集合
+
+	return lit
+}
+
+// 表达式 fn 的解析标识符参数，参数任意个
+func (p *Parser) parseFunctionParameters() []*ast.Identifier { //返回标识符（参数）数组指针
+	identifiers := []*ast.Identifier{}
+	if p.peekTokenIs(token.RPAREN) { //没有参数，下一个是右括号，结束返回
+		p.nextToken()
+		return identifiers
+	}
+	p.nextToken() //到第一个参数
+	//产生参数标识符节点，加入数组
+	ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	identifiers = append(identifiers, ident)
+
+	for p.peekTokenIs(token.COMMA) { //下一个是'，' 再加入一个参数
+		p.nextToken()
+		p.nextToken()
+		//产生参数标识符节点，加入数组
+		ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		identifiers = append(identifiers, ident)
+	}
+
+	if !p.expectPeek(token.RPAREN) { //最后期望是 ）
+		return nil
+	}
+	return identifiers
+}
+
+// 调用表达式解析 例：add() '（' 作为识别触发中缀解析, 返回*CallExpression中缀语法树
+func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression { //中缀解析会传入leftExp，左语法树节点，即传入函数名 add标识符节点
+	exp := &ast.CallExpression{Token: p.curToken, Function: function} //p.curToken 为'（' ，Function:传入的标识符节点
+	exp.Arguments = p.parseCallArguments()                            //解析函数的词参数表达式
+	return exp
+}
+
+// 调用表达式解析——解析调用表达式的参数，传入参数由n个表达式组成
+func (p *Parser) parseCallArguments() []ast.Expression {
+	args := []ast.Expression{}
+
+	if p.peekTokenIs(token.RPAREN) { //没有传入参数的情况
+		p.nextToken()
+		return args
+	}
+
+	p.nextToken()
+	args = append(args, p.parseExpression(LOWEST)) //解析表达式，参数即表达式
+
+	for p.peekTokenIs(token.COMMA) { //下一个是逗号，说明还有参数
+		p.nextToken()
+		p.nextToken()
+		args = append(args, p.parseExpression(LOWEST)) //解析表达式，参数即表达式
+	}
+
+	if !p.expectPeek(token.RPAREN) { // )结尾
+		return nil
+	}
+
+	return args
 }
