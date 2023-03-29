@@ -127,7 +127,9 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 	}
 	p.nextToken()
 
-	//TODO  先跳过表达式的处理,直到遇到分号结束';'
+	//TODO  完成ed 解析 let 标识符 = Value 的Value表达式
+	stmt.Value = p.parseExpression(LOWEST)
+
 	if p.peekTokenIs(token.SEMICOLON) {
 		p.nextToken()
 	}
@@ -139,8 +141,10 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	stmt := &ast.ReturnStatement{Token: p.curToken} //return语句根节点
 	p.nextToken()
 
-	//TODO  先跳过表达式的处理,直到遇到分号结束';'
-	if !p.curTokenIs(token.SEMICOLON) {
+	//TODO  完成ed 解析 return ReturnValue 的ReturnValue表达式
+	stmt.ReturnValue = p.parseExpression(LOWEST)
+
+	if p.peekTokenIs(token.SEMICOLON) {
 		p.nextToken()
 	}
 	return stmt

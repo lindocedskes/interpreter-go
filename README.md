@@ -1,6 +1,6 @@
 ## writing an interpreter in go中文版-跟着书本敲的代码
 
-目前学习到：+ 2.7 普拉特解析工作方式
+目前学习到：+ 2.9 RPPL 语法分析器完成
 
 学完章节ed:
 + 1.3 简单词法分析器
@@ -31,6 +31,8 @@
   + 2.8.3 if表达式：if-else，else可选，包含{}解析函数
   + 2.8.4 函数字面量：fn <parameters> <block statement>
   + 2.8.5 调用表达式： <expression>(<comma separated expressions>) 例：add()
+  + 2.8.6 删除TODO ：let 和return语句支持表达式
+  + 2.9 RPPL :读取-语法分析-输出 循环 模拟控制台
 
 tag版本解释
 
