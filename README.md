@@ -1,6 +1,6 @@
 ## writing an interpreter in go中文版-跟着书本敲的代码
 
-目前学习到： 2.9 RPPL 语法分析器完成
+目前学习到： 3.5 求值表达式
 
 学完章节ed:
 + 1.3 简单词法分析器
@@ -33,6 +33,20 @@
   + 2.8.5 调用表达式： <expression>(<comma separated expressions>) 例：add()
   + 2.8.6 删除TODO ：let 和return语句支持表达式
   + 2.9 RPPL :读取-语法分析-输出 循环 模拟控制台
+
+第三章 求值
++ 3.4 对象系统的基础：构建原始数据类型，新增object/object.go
++ 3.5 求值表达式 ：开始编写Eval函数对ast树遍历求值 新增evaluator/evaluator.go
+  + 3.5.1 整数字面量
+  + 3.5.2 完成REPL :调用Eval(program)
+  + 3.5.3 布尔字面量
+  + 3.5.4 空值
+  + 3.5.5 前缀表达式 :支持! -
+  + 3.5.6 中缀表达式 :支持int的算术运算和逻辑运算&&支持布尔间的==与!=
++ 3.6 条件语句：支持if-else
++ 3.7 返回语句：支持return，嵌套语句return实现
++ 3.8 错误处理：Eval解析时未定义情况,newError函数封装ERROR结构体，包含具体错误消息
++ 3.9 绑定与环境:创建环境，解析let语句进行标识符与值的绑定
 
 tag版本解释
 + v2.3 语法分析器扩展完成：支持布尔字面量、分组表达式、if-else、fn函数定义、函数调用以及Let和return语句表达式处理实现

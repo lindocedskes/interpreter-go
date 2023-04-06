@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"monkey/evaluator"
 	"monkey/lexer"
+	"monkey/object"
 	"monkey/parser"
 )
 
@@ -13,10 +15,12 @@ const PORMPT = ">> "
 // REPL 实现读取-求值-打印 循环
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in) //为文本 I/O 提供了缓冲区，读入一行给扫描器
+	env := object.NewEnviroment()   //创建标识符的环境-域
 
 	for {
 		fmt.Fprintf(out, PORMPT)
-		scanned := scanner.Scan() //读取缓冲区内容??
+		scanned := scanner.Scan() //读取缓冲区内容
+
 		if !scanned {
 			return
 		}
@@ -31,9 +35,13 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		io.WriteString(out, "\n语法解析处理结果:\n")
-		io.WriteString(out, program.String()) //io输出语法处理结果
-		io.WriteString(out, "\n")
+		//ast树遍历求值
+		evaluated := evaluator.Eval(program, env)
+		if evaluated != nil {
+			io.WriteString(out, "\n求值结果:\n")
+			io.WriteString(out, evaluated.Inspect()) //查看求值结果
+			io.WriteString(out, "\n")
+		}
 	}
 }
 
