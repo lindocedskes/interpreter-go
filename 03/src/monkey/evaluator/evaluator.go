@@ -52,7 +52,23 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 			return val
 		}
 		env.Set(node.Name.Value, val)
+	case *ast.FunctionLiteral: //定义函数——函数字面量'fn' AST
+		params := node.Parameters
+		body := node.Body
+		//封装 形参，函数体，局部域
+		return &object.Function{Parameters: params, Env: env, Body: body} //仅是声明，返回封装的函数
+	case *ast.CallExpression: //调用函数 AST
+		function := Eval(node.Function, env) //函数字面量(fn)和函数名的标识符，封装为FUNCTION类型，函数名的标识符的value（也是*ast.FunctionLiteral）会被解析返回FUNCTION
+		if isError(function) {
+			return function
+		}
+		args := evalExpressions(node.Arguments, env) //1. 对参数求值，node.Arguments函数的参数
+		if len(args) == 1 && isError(args[0]) {      //遇到错误，停止求值
+			return args[0]
+		}
+		return applyFunction(function, args) //调用函数，给入函数名（封装的FUNCTION类型）和参数集
 
+	//终端节点
 	case *ast.IntegerLiteral: //终端节点整数，返回值，以对象系统-原始数据类型 封装返回
 		return &object.Integer{Value: node.Value}
 	case *ast.Boolean: //终端节点布尔，返回值，以对象系统-原始数据类型 封装返回
@@ -241,4 +257,51 @@ func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object
 		return newError("identifier notfound: " + node.Value)
 	}
 	return val
+}
+
+// 调用函数，对参数求值 参数是表达式集合
+func evalExpressions(exps []ast.Expression, env *object.Environment) []object.Object {
+	var result []object.Object
+
+	for _, e := range exps { //对调用函数的各个参数求值
+		evaluated := Eval(e, env)
+		if isError(evaluated) {
+			return []object.Object{evaluated} //error类
+		}
+		result = append(result, evaluated) //求值结果集合
+	}
+	return result
+}
+
+// 调用函数*ast.CallExpression处理返回，给入函数名（封装的FUNCTION类型或？？）和参数集
+// 求值函数体
+func applyFunction(fn object.Object, args []object.Object) object.Object {
+	function, ok := fn.(*object.Function) //??标识符
+	if !ok {
+		return newError("not a function: %s", fn.Type())
+	}
+
+	extendedEnv := extendFunctionEnv(function, args) //参数绑定，形参和实参，并扩展域
+	evaluated := Eval(function.Body, extendedEnv)    //函数体求值
+	return unwrapReturnValue(evaluated)              //有无return语句的处理
+}
+
+// 参数绑定，形参和实参，并扩展域
+func extendFunctionEnv(fn *object.Function, args []object.Object) *object.Environment {
+	env := object.NewEnclodedEnvironment(fn.Env) //创建基于外部域的新内部域
+	//*object.Function 内部的形参，args[]外部的实参(已经被求值过)
+	for paramIdx, param := range fn.Parameters {
+		env.Set(param.Value, args[paramIdx])
+	}
+
+	return env
+}
+
+// 函数体有无return语句处理
+func unwrapReturnValue(obj object.Object) object.Object {
+	// 函数体有return语句，解包返回上层
+	if returnValue, ok := obj.(*object.ReturnValue); ok {
+		return returnValue.Value
+	}
+	return obj
 }
